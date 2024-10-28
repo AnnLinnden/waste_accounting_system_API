@@ -4,6 +4,8 @@ from database.sql_models import engine, Organization, Warehouse, WarehouseAvaila
 
 def generate_test_data():
     with Session(engine) as session:
+        if session.exec(select(Organization)).first() is not None:
+            return "В базе данных уже есть записи"
         organizations = [
             Organization(name="ОО 1"),
             Organization(name="ОО 2"),
