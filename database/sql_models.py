@@ -1,13 +1,19 @@
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Dict, List
+from pydantic import BaseModel
 from fastapi import Depends
 from sqlmodel import Field, Session, SQLModel, create_engine
 import config
 
 
-# Данные об организации. Информации о типах отходов здесь нет, потому что они будут в post-запросах
+# Данные об организации. Информации о типах отходов здесь нет, потому что они будут в запросах на утилизацию
 class Organization(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)  # id будет присваиваться автоматически
     name: str = Field(default=..., description="Название организации")
+
+
+class CreateOrganization(SQLModel):  # при создании организации пользователь задает расстояние до хранилищ
+    name: str
+    warehouses: Dict[int, int]  # id склада, расстояние до него от организации
 
 
 # Данные о хранилищах, включая актуальные лимиты по каждому типу отходов
@@ -38,6 +44,22 @@ class Reservation(SQLModel, table=True):
     waste_type: str = Field(default=..., description='Укажите glass, plastic или bio')
     quantity: int = Field(default=...)
     accepted: bool = Field()
+
+
+# Модель создания списка складов в удобном для пользователя формате
+class WarehouseResponse(BaseModel):
+    warehouse_id: int
+    warehouse_name: str
+    distance: int
+    bio_limit: int
+    plastic_limit: int
+    glass_limit: int
+
+
+# Модель возвращает список доступных складов и информацию о них для каждой организации
+class OrganizationsWithWarehousesResponse(BaseModel):
+    organization_name: str
+    warehouses: List[WarehouseResponse]
 
 
 engine = create_engine(config.database_url)
