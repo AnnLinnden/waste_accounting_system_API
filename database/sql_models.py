@@ -60,10 +60,10 @@ class ReservationUpdate(BaseModel):
 class WarehouseResponse(BaseModel):
     warehouse_id: int
     warehouse_name: str
-    distance: int
     bio_limit: int
     plastic_limit: int
     glass_limit: int
+    distance: int | list  # int для одного хранилища (get /orgs/), list для нескольких (get /warehouses/{warehouse_id}/)
 
 
 class OrganizationsWithWarehousesResponse(BaseModel):
