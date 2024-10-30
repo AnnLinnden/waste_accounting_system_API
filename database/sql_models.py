@@ -43,7 +43,16 @@ class Reservation(SQLModel, table=True):
     to_warehouse: int = Field(default=..., foreign_key="warehouse.id")
     waste_type: str = Field(default=..., description='Укажите glass, plastic или bio')
     quantity: int = Field(default=...)
-    accepted: bool = Field()
+    accepted: bool = Field(default=None)
+
+
+class ReservationUpdate(BaseModel):
+    id: Optional[int] | None = None
+    from_org: int | None = None
+    to_warehouse: int | None = None
+    waste_type: str | None = None
+    quantity: int | None = None
+    accepted: bool | None = None
 
 
 # Модель создания списка складов в удобном для пользователя формате
