@@ -11,12 +11,11 @@ class Organization(SQLModel, table=True):
     name: str = Field(default=..., description="Название организации")
 
 
-class CreateOrganization(SQLModel):  # при создании организации пользователь задает расстояние до хранилищ
+class CreateOrganization(SQLModel):
     name: str
     warehouses: Dict[int, int]  # id склада, расстояние до него от организации
 
 
-# Данные о хранилищах, включая актуальные лимиты по каждому типу отходов
 class Warehouse(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(default=..., description="Название хранилища")
@@ -33,19 +32,22 @@ class WarehouseAvailability(SQLModel, table=True):
     dist: int = Field(default=...)
 
 
-# Информация о резервировании места в хранилищах. Нужно, чтобы сотрудник организации мог забронировать место.
+# Резервирование места в хранилищах. Нужно, чтобы сотрудник организации мог забронировать место.
 # Если отходы не доставят, сотрудник хранилища укажет в accepted False, бронь отменится, лимиты обновятся.
+# Каждая доставка сохраняется в отдельной строке (если ОО1 отдает 20 единиц стекла в МНО2 и 40 - в МНО3 в рамках
+# одной отправки, будет создано 2 заказа - по одному на хранилище)
 # Можно добавить функцию проверки для аналитики: сколько доставок отменили в конкретный период,
 # какая организация делает это чаще всего.
 class Reservation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     from_org: int = Field(default=..., foreign_key="organization.id")
     to_warehouse: int = Field(default=..., foreign_key="warehouse.id")
-    waste_type: str = Field(default=..., description='Укажите glass, plastic или bio')
+    waste_type: str = Field(default=..., description="Укажите тип отходов: стекло, пластик или биоотходы")
     quantity: int = Field(default=...)
     accepted: bool = Field(default=None)
 
 
+# Для обновления accepted: получены отходы или нет
 class ReservationUpdate(BaseModel):
     id: Optional[int] | None = None
     from_org: int | None = None
@@ -55,7 +57,6 @@ class ReservationUpdate(BaseModel):
     accepted: bool | None = None
 
 
-# Модель создания списка складов в удобном для пользователя формате
 class WarehouseResponse(BaseModel):
     warehouse_id: int
     warehouse_name: str
@@ -65,9 +66,9 @@ class WarehouseResponse(BaseModel):
     glass_limit: int
 
 
-# Модель возвращает список доступных складов и информацию о них для каждой организации
 class OrganizationsWithWarehousesResponse(BaseModel):
     organization_name: str
+    organization_id: int
     warehouses: List[WarehouseResponse]
 
 
