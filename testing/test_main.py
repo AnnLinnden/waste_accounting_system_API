@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 import os
+os.environ['TESTING'] = 'True'  # Эту строку нельзя переносить ниже, иначе app создастся до включения тестового режима
 from main import app
 
-os.environ['TESTING'] = 'True'
 client = TestClient(app)
 
 
