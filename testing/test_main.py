@@ -1,9 +1,15 @@
+import pytest
 from fastapi.testclient import TestClient
 import os
 from main import app
 
 os.environ['TESTING'] = 'True'
 client = TestClient(app)
+
+
+def db_reset():
+    client.delete("/testing/")
+    client.put("/testing/")
 
 
 def test_read_main():
@@ -15,9 +21,109 @@ def test_read_main():
     }
 
 
-def db_reset():
-    client.delete("/testing/")
-    client.put("/testing/")
+def test_create_warehouse():
+    db_reset()
+    response = client.post("/warehouses/",
+                           json={"name": "Название", "bio_limit": 10, "plastic_limit": 20, "glass_limit": 30})
+    assert response.status_code == 201
+    assert response.json() == {"bio_limit": 10, "name": "Название", "glass_limit": 30, "id": 9, "plastic_limit": 20}
+
+
+def test_create_warehouse_bad_request():
+    db_reset()
+    response = client.post("/warehouses/",
+                           json={"name": "Название", "bio_limit": "10т", "plastic_limit": "20т", "glass_limit": "30т"})
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Указывая лимиты отходов, используйте только числа"
+}
+
+
+def test_create_org():
+    db_reset()
+    response = client.post("/orgs/",
+                           json={"name": "Название организации", "warehouses": {"1": 10, "2": 20, "3": 30}})
+    assert response.status_code == 201
+    assert response.json() == {}
+
+
+def test_create_org_bad_request():
+    db_reset()
+    response = client.post("/orgs/",
+                           json=
+                           {"name": "Название организации",
+                            "warehouses":
+                                {"Хранилище 1": "10 км",
+                                 "Хранилище 2": "20 км",
+                                 "Хранилище 3": "30 км"}
+                            }
+                           )
+    assert response.status_code == 422
+    assert response.json() == {"detail":
+                                   [{"type": "int_parsing", "loc":
+                                       ["body", "warehouses", "Хранилище 1", "[key]"],
+                                     "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                     "input": "Хранилище 1"},
+                                    {"type": "int_parsing",
+                                     "loc": [
+                                         "body",
+                                         "warehouses",
+                                         "Хранилище 1"
+                                     ],
+                                     "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                     "input": "10 км"
+                                     },
+                                    {
+                                        "type": "int_parsing",
+                                        "loc": [
+                                            "body",
+                                            "warehouses",
+                                            "Хранилище 2",
+                                            "[key]"
+                                        ],
+                                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                        "input": "Хранилище 2"
+                                    },
+                                    {
+                                        "type": "int_parsing",
+                                        "loc": [
+                                            "body",
+                                            "warehouses",
+                                            "Хранилище 2"
+                                        ],
+                                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                        "input": "20 км"
+                                    },
+                                    {
+                                        "type": "int_parsing",
+                                        "loc": [
+                                            "body",
+                                            "warehouses",
+                                            "Хранилище 3",
+                                            "[key]"
+                                        ],
+                                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                        "input": "Хранилище 3"
+                                    },
+                                    {
+                                        "type": "int_parsing",
+                                        "loc": [
+                                            "body",
+                                            "warehouses",
+                                            "Хранилище 3"
+                                        ],
+                                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                                        "input": "30 км"
+                                    }
+                                    ]
+                               }
+
+
+def test_create_org_not_found():
+    db_reset()
+    response = client.post("/orgs/",
+                           json={"name": "Название организации", "warehouses": {"1000": 10, "20": 20, "30": 30}})
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Хранилище 1000 не найдено"}
 
 
 def test_get_all():
@@ -126,26 +232,3 @@ def test_get_all():
             ]
         }
     ]
-
-
-def test_create_org():
-    db_reset()
-    response = client.post("/orgs/",
-                           json={"name": "Название организации", "warehouses": {"1": 10, "2": 20, "3": 30}})
-    assert response.status_code == 201
-    assert response.json() == {}
-
-
-def test_create_org_bad_request():
-    db_reset()
-    response = client.post("/orgs/",
-                           json=
-                           {"name": "Название организации",
-                            "warehouses":
-                                {"Хранилище 1": "10 км",
-                                 "Хранилище 2": 20,
-                                 "3": 30}
-                            }
-                           )
-    assert response.status_code == 422
-    assert response.json() == {"message": "Указывая id хранилища и расстояние, используйте только целые числа"}

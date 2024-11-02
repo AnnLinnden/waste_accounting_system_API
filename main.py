@@ -29,9 +29,21 @@ def generate_data():
     return {"message": "Данные добавлены, можно тестировать"}
 
 
-@app.delete("/testing/")
-def clear_db():
-    sql.drop_tables()
+@app.post("/warehouses/", status_code=201)
+def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Warehouse:
+    new_warehouse = sql.Warehouse(name=warehouse.name,
+                                  bio_limit=warehouse.bio_limit,
+                                  plastic_limit=warehouse.plastic_limit,
+                                  glass_limit=warehouse.glass_limit)
+    if not all(isinstance(limit, int) for limit in [new_warehouse.bio_limit, new_warehouse.plastic_limit, new_warehouse.glass_limit]):
+        raise HTTPException(
+            status_code=422,
+            detail="Указывая лимиты отходов, используйте только числа"
+        )
+    session.add(new_warehouse)
+    session.commit()
+    session.refresh(new_warehouse)
+    return new_warehouse
 
 
 @app.post("/orgs/", status_code=201)  # добавляем новую организацию
@@ -46,10 +58,10 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
 
     # в warehouse_availability добавляем список доступных хранилищ и расстояний до них
     for warehouse_id, distance in org.warehouses.items():
-        if not warehouse_id.is_integer() or not distance.is_integer():
+        if not (warehouse_id.is_integer() or distance.is_integer()):
             raise HTTPException(
                 status_code=422,
-                detail="Указывая id хранилища и расстояние, используйте только целые числа"
+                detail="Указывая id хранилища и расстояние, используйте только числа"
             )
         if warehouse_id in warehouses_id_list:
             warehouse_availability = sql.WarehouseAvailability(
@@ -65,14 +77,6 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
             )
     session.commit()
     return new_org
-
-
-@app.post("/warehouses/", status_code=201)
-def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Warehouse:
-    session.add(warehouse)
-    session.commit()
-    session.refresh(warehouse)
-    return warehouse
 
 
 @app.get("/orgs/")
@@ -285,3 +289,10 @@ def delivery_confirmed(order_id: int, update: sql.ReservationUpdate, session: sq
     session.commit()
     session.refresh(reserve)
     return new_order_data
+
+
+@app.delete("/testing/")
+def clear_db():
+    sql.drop_tables()
+    sql.create_tables()
+
