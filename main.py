@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from sqlmodel import select
-from typing import List, Dict
+from typing import List
 import database.sql_models as sql
 from testing.testing_script import generate_test_data
 
-app = FastAPI()
+
+description = ""
+app = FastAPI(title="Система учета отходов", description=description)
 
 
 @app.on_event("startup")  # если базы данных нет, она создается при запуске приложения
@@ -23,7 +25,7 @@ def start_message():
     }
 
 
-@app.put("/testing/")  # Если таблица пуста, в нее можно добавить тестовые данные
+@app.put("/testing/", summary="Если БД пуста, в нее можно добавить уже готовые тестовые данные")
 def generate_data():
     generate_test_data()
     return {"message": "Данные добавлены, можно тестировать"}

@@ -1,6 +1,6 @@
-import pytest
 from fastapi.testclient import TestClient
 import os
+
 os.environ['TESTING'] = 'True'  # Эту строку нельзя переносить ниже, иначе app создастся до включения тестового режима
 from main import app
 
@@ -13,6 +13,7 @@ def db_reset():
 
 
 def test_read_main():
+    db_reset()
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {
@@ -35,7 +36,7 @@ def test_create_warehouse_bad_request():
                            json={"name": "Название", "bio_limit": "10т", "plastic_limit": "20т", "glass_limit": "30т"})
     assert response.status_code == 422
     assert response.json() == {"detail": "Указывая лимиты отходов, используйте только числа"
-}
+                               }
 
 
 def test_create_org():
@@ -232,3 +233,108 @@ def test_get_all():
             ]
         }
     ]
+
+
+def test_get_specific_org():
+    db_reset()
+    response = client.get("/orgs/2")
+    assert response.status_code == 200
+    assert response.json() == {
+        "organization_name": "ОО 2",
+        "organization_id": 2,
+        "warehouses": [
+            {
+                "warehouse_id": 3,
+                "warehouse_name": "МНО 3",
+                "bio_limit": 250,
+                "plastic_limit": 10,
+                "glass_limit": 0,
+                "distance": 50
+            },
+            {
+                "warehouse_id": 5,
+                "warehouse_name": "МНО 6",
+                "bio_limit": 150,
+                "plastic_limit": 0,
+                "glass_limit": 100,
+                "distance": 650
+            },
+            {
+                "warehouse_id": 6,
+                "warehouse_name": "МНО 7",
+                "bio_limit": 250,
+                "plastic_limit": 100,
+                "glass_limit": 0,
+                "distance": 100
+            }
+        ]
+    }
+
+
+def test_not_found_specific_org():
+    db_reset()
+    response = client.get("/orgs/200")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Организации с id 200 нет в базе данных"}
+
+
+def test_get_specific_warehouse():
+    db_reset()
+    response = client.get("/warehouses/2")
+    assert response.status_code == 200
+    assert response.json() == {
+        "warehouse_id": 2,
+        "warehouse_name": "МНО 2",
+        "bio_limit": 150,
+        "plastic_limit": 50,
+        "glass_limit": 0,
+        "distance": [
+            {
+                "org_id": 1,
+                "distance": 50
+            }
+        ]
+    }
+
+
+def test_not_found_specific_warehouse():
+    db_reset()
+    response = client.get("/warehouses/200")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Хранилища с id 200 нет в базе данных"}
+
+
+def test_create_transfer():
+    db_reset()
+    response = client.post("/transfer_waste/?org_id=1&waste_type=bio&quantity=30")
+    assert response.status_code == 200
+    assert response.json() == {
+        "organization_id": 1,
+        "waste_type": "bio",
+        "initial_quantity": 30,
+        "transfer_data": [
+            {
+                "warehouse_id": 2,
+                "warehouse_name": "МНО 2",
+                "delivered_quantity": 30,
+                "distance": 50
+            }
+        ]
+    }
+
+
+def test_transfer_bad_request():
+    db_reset()
+    response = client.post("/transfer_waste/?org_id=1&waste_type=biomio&quantity=30")
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Неверный тип отходов. Укажите 'glass', 'plastic' или 'bio'"}
+
+
+def test_transfer_too_much_waste():
+    db_reset()
+    response = client.post("/transfer_waste/?org_id=2&waste_type=bio&quantity=1000")
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail":
+            "Невозможно переработать 350 из 1000 единиц отходов: места в хранилищах недостаточно. "
+            "Запрос на отправку отходов отменен"}

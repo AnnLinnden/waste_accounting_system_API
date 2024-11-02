@@ -1,5 +1,4 @@
 import os
-import pytest
 from typing import Annotated, Optional, Dict, List
 from pydantic import BaseModel
 from fastapi import Depends
