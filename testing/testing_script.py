@@ -44,3 +44,4 @@ def generate_test_data():
 
         session.add_all(warehouse_availabilities)
         session.commit()
+

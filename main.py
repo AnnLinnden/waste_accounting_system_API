@@ -15,13 +15,26 @@ def on_startup():
         pass
 
 
+@app.get("/")
+def start_message():
+    return {
+        "message":
+        "Рекомендации по использованию API здесь: https://github.com/AnnLinnden/waste_accounting_system_API"
+    }
+
+
 @app.put("/testing/")  # Если таблица пуста, в нее можно добавить тестовые данные
 def generate_data():
     generate_test_data()
     return {"message": "Данные добавлены, можно тестировать"}
 
 
-@app.post("/orgs/")  # добавляем новую организацию
+@app.delete("/testing/")
+def clear_db():
+    sql.drop_tables()
+
+
+@app.post("/orgs/", status_code=201)  # добавляем новую организацию
 def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organization:
     new_org = sql.Organization(name=org.name)  # id добавится автоматически
     session.add(new_org)
@@ -33,6 +46,11 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
 
     # в warehouse_availability добавляем список доступных хранилищ и расстояний до них
     for warehouse_id, distance in org.warehouses.items():
+        if not warehouse_id.is_integer() or not distance.is_integer():
+            raise HTTPException(
+                status_code=422,
+                detail="Указывая id хранилища и расстояние, используйте только целые числа"
+            )
         if warehouse_id in warehouses_id_list:
             warehouse_availability = sql.WarehouseAvailability(
                 org_id=new_org.id,
@@ -49,7 +67,7 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
     return new_org
 
 
-@app.post("/warehouses/")
+@app.post("/warehouses/", status_code=201)
 def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Warehouse:
     session.add(warehouse)
     session.commit()
@@ -58,7 +76,7 @@ def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Ware
 
 
 @app.get("/orgs/")
-def get_org_and_warehouses(session: sql.SessionDep) -> List[sql.OrganizationsWithWarehousesResponse]:
+async def get_org_and_warehouses(session: sql.SessionDep) -> List[sql.OrganizationsWithWarehousesResponse]:
     orgs = session.exec(select(sql.Organization)).all()
     response = []
     for organization in orgs:
@@ -101,7 +119,7 @@ def get_org_and_warehouses(session: sql.SessionDep) -> List[sql.OrganizationsWit
 
 
 @app.get("/orgs/{org_id}/")
-def get_specific_org(org_id: int, session: sql.SessionDep) -> sql.OrganizationsWithWarehousesResponse:
+async def get_specific_org(org_id: int, session: sql.SessionDep) -> sql.OrganizationsWithWarehousesResponse:
     org = session.get(sql.Organization, org_id)
     if not org:
         raise HTTPException(

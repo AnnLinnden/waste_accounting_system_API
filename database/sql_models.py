@@ -1,8 +1,11 @@
+import os
 from typing import Annotated, Optional, Dict, List
 from pydantic import BaseModel
 from fastapi import Depends
 from sqlmodel import Field, Session, SQLModel, create_engine
 import config
+
+TESTING = os.environ.get("TESTING")
 
 
 # Данные об организации. Информации о типах отходов здесь нет, потому что они будут в запросах на утилизацию
@@ -72,11 +75,23 @@ class OrganizationsWithWarehousesResponse(BaseModel):
     warehouses: List[WarehouseResponse]
 
 
-engine = create_engine(config.database_url)
+def create_db():
+    if TESTING:
+        return create_engine(f"sqlite:///database/testdb")
+    else:
+        return create_engine(config.database_url)
+
+
+engine = create_db()
 
 
 def create_tables():
     SQLModel.metadata.create_all(engine)
+
+
+def drop_tables():
+    if TESTING:
+        SQLModel.metadata.drop_all(engine)
 
 
 def get_session():
