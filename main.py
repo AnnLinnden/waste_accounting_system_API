@@ -60,11 +60,6 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
 
     # в warehouse_availability добавляем список доступных хранилищ и расстояний до них
     for warehouse_id, distance in org.warehouses.items():
-        if not (warehouse_id.is_integer() or distance.is_integer()):
-            raise HTTPException(
-                status_code=422,
-                detail="Указывая id хранилища и расстояние, используйте только числа"
-            )
         if warehouse_id in warehouses_id_list:
             warehouse_availability = sql.WarehouseAvailability(
                 org_id=new_org.id,
