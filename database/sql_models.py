@@ -2,6 +2,7 @@ import os
 from typing import Annotated, Optional, Dict, List
 from pydantic import BaseModel
 from fastapi import Depends
+from sqlalchemy import false
 from sqlmodel import Field, Session, SQLModel, create_engine
 import config
 
@@ -10,11 +11,39 @@ import config
 class Organization(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)  # id будет присваиваться автоматически
     name: str = Field(default=..., description="Название организации")
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "name": "Название организации",
+                    "warehouses": {
+                        1: 40,
+                        2: 50,
+                        3: 60
+                    }
+                }
+            ]
+        }
+    }
 
 
 class CreateOrganization(SQLModel):
     name: str
     warehouses: Dict[int, int]  # id склада, расстояние до него от организации
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "name": "Название организации",
+                    "warehouses": {
+                        1: 40,
+                        2: 50,
+                        3: 60
+                    }
+                }
+            ]
+        }
+    }
 
 
 class Warehouse(SQLModel, table=True):
@@ -23,6 +52,19 @@ class Warehouse(SQLModel, table=True):
     bio_limit: int = Field(default=...)
     plastic_limit: int = Field(default=...)
     glass_limit: int = Field(default=...)
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "name": "Название хранилища",
+                    "bio_limit": 10,
+                    "plastic_limit": 20,
+                    "glass_limit": 30
+                }
+            ]
+        }
+    }
 
 
 # Хранилища, доступные для конкретных организаций, расстояние между организациями и хранилищами
@@ -56,6 +98,13 @@ class ReservationUpdate(BaseModel):
     waste_type: str | None = None
     quantity: int | None = None
     accepted: bool | None = None
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"accepted": False}
+            ]
+        }
+    }
 
 
 class WarehouseResponse(BaseModel):

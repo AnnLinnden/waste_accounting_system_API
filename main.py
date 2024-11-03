@@ -5,7 +5,9 @@ import database.sql_models as sql
 from testing.testing_script import generate_test_data
 
 
-description = ""
+description = ("Если нужно создать несколько новых объектов с определенными параметрами, сначала выполните "
+               "`post /warehouses/`, а затем `post /orgs/`. "
+               "При создании организации можно указать доступные хранилища и расстояние до них.")
 app = FastAPI(title="Система учета отходов", description=description)
 
 
@@ -31,7 +33,7 @@ def generate_data():
     return {"message": "Данные добавлены, можно тестировать"}
 
 
-@app.post("/warehouses/", status_code=201)
+@app.post("/warehouses/", status_code=201, summary="Добавление хранилища")
 def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Warehouse:
     new_warehouse = sql.Warehouse(name=warehouse.name,
                                   bio_limit=warehouse.bio_limit,
@@ -48,7 +50,7 @@ def add_warehouse(warehouse: sql.Warehouse, session: sql.SessionDep) -> sql.Ware
     return new_warehouse
 
 
-@app.post("/orgs/", status_code=201)  # добавляем новую организацию
+@app.post("/orgs/", status_code=201, summary="Добавление организации")
 def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organization:
     new_org = sql.Organization(name=org.name)  # id добавится автоматически
     session.add(new_org)
@@ -76,7 +78,7 @@ def add_org(org: sql.CreateOrganization, session: sql.SessionDep) -> sql.Organiz
     return new_org
 
 
-@app.get("/orgs/")
+@app.get("/orgs/", summary="Информация обо всех организациях и хранилищах")
 async def get_org_and_warehouses(session: sql.SessionDep) -> List[sql.OrganizationsWithWarehousesResponse]:
     orgs = session.exec(select(sql.Organization)).all()
     response = []
@@ -119,7 +121,7 @@ async def get_org_and_warehouses(session: sql.SessionDep) -> List[sql.Organizati
     return response
 
 
-@app.get("/orgs/{org_id}/")
+@app.get("/orgs/{org_id}/", summary="Информация о конкретной организации")
 async def get_specific_org(org_id: int, session: sql.SessionDep) -> sql.OrganizationsWithWarehousesResponse:
     org = session.get(sql.Organization, org_id)
     if not org:
@@ -163,7 +165,7 @@ async def get_specific_org(org_id: int, session: sql.SessionDep) -> sql.Organiza
     return response
 
 
-@app.get("/warehouses/{warehouse_id}/")
+@app.get("/warehouses/{warehouse_id}/", summary="Информация о конкретном хранилище")
 def get_specific_warehouse(warehouse_id: int, session: sql.SessionDep) -> sql.WarehouseResponse:
     warehouse = session.get(sql.Warehouse, warehouse_id)
     if not warehouse:
@@ -187,7 +189,7 @@ def get_specific_warehouse(warehouse_id: int, session: sql.SessionDep) -> sql.Wa
     return warehouse_response
 
 
-@app.post("/transfer_waste/")
+@app.post("/transfer_waste/", summary="Бронируем место в хранилищах для распределения отходов")
 def transfer_waste(org_id: int, waste_type: str, quantity: int, session: sql.SessionDep):
     if waste_type not in ["glass", "plastic", "bio"]:
         raise HTTPException(
@@ -258,7 +260,7 @@ def transfer_waste(org_id: int, waste_type: str, quantity: int, session: sql.Ses
     }
 
 
-@app.patch("/order/{order_id}")  # Передаем только значение accepted!
+@app.patch("/order/{order_id}", summary="Указываем accepted false, если нужно отменить заказ на утилизацию")
 def delivery_confirmed(order_id: int, update: sql.ReservationUpdate, session: sql.SessionDep):
     reserve = session.get(sql.Reservation, order_id)
     if not reserve:
@@ -288,7 +290,7 @@ def delivery_confirmed(order_id: int, update: sql.ReservationUpdate, session: sq
     return new_order_data
 
 
-@app.delete("/testing/")
+@app.delete("/testing/", summary="Очистка базы и создание тестовых таблиц. Работает только в режиме тестирования")
 def clear_db():
     sql.drop_tables()
     sql.create_tables()
